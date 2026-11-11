@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>饭点盲盒 · 随机选饭店</title>
+<style>
+:root{
+  /* ---- 配色（沿用规范浅色系）---- */
+  --paper:#FFF9F5;
+  --card:#FFFFFF;
+  --pink-50:#FEF4F0;
+  --pink-100:#FBD9D1;
+  --pink-200:#F6C4BC;
+  --pink-300:#F0A9A4;
+  --mint-100:#D7FEE6;
+  --violet-100:#E8DFF5;
+  --violet-200:#D9D3E2;
+  --grey-100:#C4BCC2;
+  --ink:#5A4A52;
+  --ink-2:#8B7A82;
+  --ink-3:#B9AEB4;
+  --line:rgba(90,74,82,.09);
+  /* ---- 圆角 / 阴影 ---- */
+  --r:24px;
+  --shadow:0 8px 24px rgba(220,200,210,.3);
+  --shadow-s:0 8px 24px rgba(220,200,210,.3);
+  /* ---- 字号（规范：主标题 20px / 正文 14px）---- */
+  --fs-title:20px;
+  --fs-body:14px;
+  --fs-cap:12px;
+  --ls:.8px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+/* 猫啃网糖圆体（SIL OFL 1.1 免费商用），随 App 一起分发，无需安装 */
+@font-face{
+  font-family:'MaoKenTangYuan';
+  src:url('tangyuan.woff2') format('woff2'),
+      url('tangyuan.ttf') format('truetype');
+  font-weight:400;font-style:normal;
+  font-display:swap;
+}
+body{
+  font-family:'MaoKenTangYuan','猫啃网糖圆体','TangYuan SC','PingFang SC','Hiragino Sans GB','Microsoft YaHei',-apple-system,'Segoe UI',system-ui,sans-serif;
+  min-height:100vh;display:flex;align-items:center;justify-content:center;padding:22px 12px;
+  background:
+    radial-gradient(circle at 18% 14%,rgba(255,255,255,.92) 0 8%,transparent 34%),
+    radial-gradient(circle at 84% 82%,rgba(255,255,255,.78) 0 7%,transparent 30%),
+    radial-gradient(circle at 78% 10%,rgba(251,217,209,.7) 0 6%,transparent 26%),
+    radial-gradient(circle at 10% 88%,rgba(215,254,230,.6) 0 6%,transparent 26%),
+    linear-gradient(155deg,#FFFCFA 0%,#FFF9F5 34%,#FBF6F9 68%,#F6F4FC 100%);
+  color:var(--ink);letter-spacing:.3px;font-size:var(--fs-body);
+}
+.phone{
+  width:100%;max-width:400px;height:min(860px,calc(100vh - 44px));
+  background:
+    radial-gradient(circle at 50% 0%,rgba(255,255,255,.95) 0%,rgba(255,255,255,0) 42%),
+    radial-gradient(rgba(246,196,188,.14) 1.5px,transparent 1.6px) 0 0/24px 24px,
+    linear-gradient(180deg,#FFF9F5 0%,#FFF9F5 58%,#FFFBFC 100%);
+  border-radius:38px;overflow:hidden;position:relative;
+  display:flex;flex-direction:column;
+  box-shadow:0 8px 24px rgba(220,200,210,.3),0 30px 70px rgba(190,170,190,.26),0 0 0 9px #fff;
+}
+.notch{position:absolute;top:9px;left:50%;transform:translateX(-50%);width:92px;height:21px;background:#fff;border-radius:12px;z-index:20}
+.statusbar{height:36px;flex:0 0 36px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;font-size:12px;font-weight:500;color:var(--ink-2);position:relative;z-index:10}
+
+.screens{flex:1;overflow-y:auto;overflow-x:hidden}
+.screens::-webkit-scrollbar{display:none}
+.screen{display:none;padding:4px 18px 24px;animation:fadeUp .38s cubic-bezier(.22,1,.36,1)}
+.screen.on{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+
+.phead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin:14px 2px 18px}
+.phead h1{
+  font-size:var(--fs-title);font-weight:500;letter-spacing:var(--ls);line-height:1.45;
+  position:relative;z-index:1;color:var(--ink);
+  text-shadow:0 1px 0 rgba(255,255,255,.95),0 2px 6px rgba(214,150,170,.18);
+}
+.phead .sub{font-size:var(--fs-cap);color:var(--ink-3);margin-top:6px;line-height:1.7;font-weight:400;letter-spacing:.4px}
+.deco-word{
+  position:absolute;top:-4px;left:-2px;font-size:24px;font-weight:500;letter-spacing:3px;
+  color:rgba(232,223,245,.5);z-index:0;pointer-events:none;user-select:none;
+}
+.phead>div:first-child{position:relative;min-width:0}
+.avatar{
+  flex:0 0 auto;width:38px;height:38px;border-radius:50%;
+  background:linear-gradient(140deg,var(--pink-100),var(--violet-100));
+  display:flex;align-items:center;justify-content:center;font-size:18px;
+  box-shadow:0 4px 12px rgba(220,200,210,.34);
+}
+
+.card{
+  background:var(--card);border-radius:var(--r);padding:20px;position:relative;
+  box-shadow:var(--shadow);
+  border:1px solid transparent;
+  background-clip:padding-box;
+}
+/* 极淡虹彩微光描边 */
+.card::before{
+  content:'';position:absolute;inset:0;border-radius:inherit;padding:1.2px;
+  background:linear-gradient(135deg,rgba(251,217,209,.55) 0%,rgba(232,223,245,.5) 44%,rgba(215,254,230,.45) 74%,rgba(251,217,209,.5) 100%);
+  -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude;
+  pointer-events:none;
+}
+/* 卡片顶部柔光，营造通透感 */
+.card::after{
+  content:'';position:absolute;left:14%;right:14%;top:0;height:42%;border-radius:var(--r);
+  background:linear-gradient(180deg,rgba(255,255,255,.55),rgba(255,255,255,0));
+  pointer-events:none;
+}
+.card+.card{margin-top:14px}
+
+/* 首页 hero —— 无插画，纯留白 + 渐变光晕 */
+.hero{text-align:center;padding:46px 26px 30px;position:relative;overflow:hidden}
+/* 顶部柔光 */
+.hero::before{
+  content:'';position:absolute;left:50%;top:-30px;transform:translateX(-50%);
+  width:220px;height:220px;border-radius:50%;pointer-events:none;
+  background:radial-gradient(circle,rgba(251,217,209,.5) 0%,rgba(251,217,209,.18) 42%,rgba(255,255,255,0) 70%);
+}
+/* 底部薄荷光晕 */
+.hero::after{
+  content:'';position:absolute;left:50%;bottom:-40px;transform:translateX(-50%);
+  width:250px;height:160px;border-radius:50%;pointer-events:none;
+  background:radial-gradient(circle,rgba(215,254,230,.42) 0%,rgba(232,223,245,.18) 46%,rgba(255,255,255,0) 72%);
+}
+/* 内容层级 */
+.hero-in{position:relative;z-index:1}
+/* 顶部细线装饰 */
+.hero-rule{
+  width:34px;height:2px;margin:0 auto 20px;border-radius:2px;
+  background:linear-gradient(90deg,rgba(251,217,209,0),rgba(251,217,209,.9),rgba(251,217,209,0));
+}
+/* 悬浮光点 */
+.glow{
+  position:absolute;border-radius:50%;pointer-events:none;mix-blend-mode:screen;
+  background:radial-gradient(circle,rgba(255,255,255,.95) 0 26%,rgba(255,236,242,.7) 48%,rgba(255,255,255,0) 72%);
+}
+.glow.g1{width:18px;height:18px;top:64px;left:44px;opacity:.85}
+.glow.g2{width:11px;height:11px;top:130px;right:52px;opacity:.7}
+.glow.g3{width:8px;height:8px;top:44px;right:96px;opacity:.55}
+.glow.g4{width:7px;height:7px;bottom:56px;left:70px;opacity:.5}
+/* 四角星芒 */
+.star{
+  position:absolute;z-index:1;pointer-events:none;width:13px;height:13px;opacity:.8;
+  background:linear-gradient(45deg,transparent 44%,rgba(255,255,255,.95) 44% 56%,transparent 56%),
+             linear-gradient(-45deg,transparent 44%,rgba(255,255,255,.95) 44% 56%,transparent 56%);
+  filter:drop-shadow(0 0 3px rgba(255,255,255,.9));
+}
+.star.st1{top:86px;right:78px}
+.star.st2{bottom:78px;right:64px;width:10px;height:10px;opacity:.65}
+
+.hero h2{
+  font-size:var(--fs-title);font-weight:500;letter-spacing:1.4px;line-height:1.6;
+  color:var(--ink);margin-top:2px;
+  text-shadow:0 1px 0 rgba(255,255,255,.95),0 2px 10px rgba(251,217,209,.5);
+}
+.hero p{
+  font-size:var(--fs-body);font-weight:400;color:var(--ink-3);margin-top:14px;line-height:1.9;
+  letter-spacing:.5px;
+}
+.hero p b{color:var(--ink-2);font-weight:500}
+
+.btn{
+  border:none;border-radius:999px;padding:14px 20px;font-size:var(--fs-body);font-weight:500;
+  font-family:inherit;cursor:pointer;width:100%;letter-spacing:1px;color:#fff;
+  transition:transform .16s,box-shadow .16s;position:relative;overflow:hidden;
+  box-shadow:0 6px 16px rgba(220,200,210,.3),inset 0 1px 0 rgba(255,255,255,.6),0 2px 4px rgba(214,150,160,.14);
+}
+/* 顶部高光层，柔和不刺眼 */
+.btn::after{
+  content:'';position:absolute;top:7%;left:9%;right:9%;height:40%;border-radius:999px;
+  background:linear-gradient(180deg,rgba(255,255,255,.46),rgba(255,255,255,0));pointer-events:none;
+}
+.btn:active{transform:scale(.965)}
+/* 主视觉按钮：饱和度足、立体感强 */
+.btn-primary{
+  padding:16px 20px;font-size:15.5px;font-weight:500;letter-spacing:1.6px;
+  background:linear-gradient(135deg,#FBD9D1 0%,#F5B8B4 48%,#EF9FA4 100%);text-shadow:0 1px 1px rgba(180,110,115,.28);
+  box-shadow:0 10px 24px rgba(239,159,164,.34),inset 0 1px 0 rgba(255,255,255,.65),0 2px 6px rgba(214,140,150,.2);
+}
+.btn-pink{background:linear-gradient(135deg,#FBD9D1 0%,#F5BEB9 55%,#F0ABA9 100%);color:#8A5C60}
+/* 次级按钮：降饱和，退到背景层 */
+.btn-mint{
+  background:linear-gradient(135deg,#F2FBF5 0%,#E4F6EC 55%,#D5EFE1 100%);color:#6B8A72;
+  box-shadow:0 4px 12px rgba(220,200,210,.22),inset 0 1px 0 rgba(255,255,255,.8);
+}
+.btn-violet{
+  background:linear-gradient(135deg,#F8F5FD 0%,#EFE9F8 55%,#E4DCF2 100%);color:#7A6A96;
+  box-shadow:0 4px 12px rgba(220,200,210,.22),inset 0 1px 0 rgba(255,255,255,.8);
+}
+.btn-white{background:linear-gradient(135deg,#fff,#FFFAF8);color:var(--ink-2);border:1px solid var(--line);box-shadow:var(--shadow-s)}
+.btn-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.btn-sm{padding:11px 18px;font-size:13px;width:auto;letter-spacing:.6px}
+
+.tick{
+  flex:0 0 auto;width:26px;height:26px;border-radius:9px;
+  border:1.8px solid rgba(232,223,245,1);background:rgba(255,255,255,.75);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  transition:all .18s;padding:0;
+}
+.tick::after{
+  content:'';width:9px;height:5px;border-left:2px solid rgba(232,223,245,1);
+  border-bottom:2px solid rgba(232,223,245,1);transform:rotate(-45deg) scale(.6);
+  opacity:0;transition:all .18s;margin-top:-2px;
+}
+.tick.on{background:linear-gradient(135deg,rgba(232,223,245,.5),rgba(251,217,209,.45));border-color:rgba(251,217,209,1)}
+.tick.on::after{opacity:1;transform:rotate(-45deg) scale(1)}
+
+.pill{display:inline-flex;align-items:center;padding:7px 15px;border-radius:999px;font-size:12.5px;background:var(--violet-100);color:#6E5C86;line-height:1}
+.pill.mint{background:rgba(215,254,230,.55);color:#5C7A64;box-shadow:inset 0 0 0 1px rgba(150,205,175,.5)}
+.pill.pink{background:rgba(251,217,209,.55);color:#96625F;box-shadow:inset 0 0 0 1px rgba(246,196,188,.7)}
+.pill.ghost{background:#fff;color:var(--ink-3);box-shadow:inset 0 0 0 1px rgba(90,74,82,.1)}
+.pill.grad{background:linear-gradient(135deg,rgba(251,217,209,.5),rgba(232,223,245,.45),rgba(215,254,230,.45));color:#5A4A52;box-shadow:inset 0 0 0 1px rgba(255,255,255,.9)}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{padding:9px 16px;border-radius:999px;font-size:13px;background:var(--card);border:1px solid var(--line);color:var(--ink-2);cursor:pointer;transition:all .18s;font-family:inherit}
+.chip.on{background:var(--violet-100);border-color:transparent;color:#6E5C86;font-weight:500}
+
+.label{font-size:12.5px;color:var(--ink-3);margin:15px 2px 9px;display:block}
+.input{
+  width:100%;border:1px solid var(--line);border-radius:16px;padding:12px 15px;font-size:14px;font-family:inherit;background:#FFFCFB;color:var(--ink);outline:none;
+  transition:border .18s,box-shadow .18s;
+}
+.input:focus{border-color:var(--pink-200);box-shadow:0 0 0 3px rgba(251,217,209,.3)}
+.input::placeholder{color:var(--ink-3)}
+select.input{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2.5 4.5L6 8l3.5-3.5' fill='none' stroke='%23B5A7AE' stroke-width='1.4' stroke-linecap='round'/></svg>");background-repeat:no-repeat;background-position:right 16px center;padding-right:40px}
+
+.item{display:flex;align-items:flex-start;gap:12px;padding:14px 0}
+.item+.item{border-top:1px solid var(--line)}
+.item-main{flex:1;min-width:0}
+.item-name{font-size:15px;font-weight:500;text-shadow:0 1px 0 rgba(255,255,255,.8);display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.item-sub{font-size:12.5px;color:var(--ink-3);margin-top:6px;line-height:1.6;word-break:break-all}
+.item-del{flex:0 0 auto;width:30px;height:30px;border-radius:50%;border:none;background:#F6F1EF;color:var(--ink-3);font-size:15px;cursor:pointer;line-height:1;transition:all .16s}
+.item-del:active{background:var(--pink-200);color:#fff;transform:scale(.9)}
+
+.weight{display:flex;align-items:center;gap:6px;margin-top:9px;flex-wrap:wrap}
+.weight span{font-size:11.5px;color:var(--ink-3)}
+.wbtn{width:27px;height:27px;border-radius:50%;border:1px solid var(--line);background:var(--card);color:var(--ink-2);font-size:14px;cursor:pointer;line-height:1;font-family:inherit}
+.wbtn:active{background:var(--pink-100);color:#fff}
+.wdots{display:flex;gap:3px;margin-left:3px}
+.wdot{width:7px;height:7px;border-radius:50%;background:#EFE6E4}
+.wdot.f{background:var(--pink-200)}
+
+.empty{text-align:center;padding:34px 16px;color:var(--ink-3)}
+.empty .ico{font-size:38px;margin-bottom:12px;opacity:.6}
+.empty p{font-size:13.5px;line-height:1.8}
+
+/* 抽签页整页紫系 + 波点纹理 */
+#s-draw{
+  margin:-4px -18px -24px;padding:4px 18px 30px;
+  background:
+    radial-gradient(circle at 50% 4%,rgba(255,255,255,.9) 0 6%,rgba(255,255,255,0) 34%),
+    radial-gradient(rgba(232,223,245,.55) 1.8px,transparent 1.9px) 0 0/26px 26px,
+    linear-gradient(170deg,#F7F2FC 0%,#EFE9F8 38%,#FBF1F5 78%,#FFF7F3 100%);
+}
+#s-draw .phead h1{color:#5A4A62}
+.draw-stage{text-align:center;margin-top:22px;position:relative}
+/* 抽象盲盒符号：纯 CSS，不依赖任何图片 */
+.orb{
+  position:relative;width:150px;height:150px;margin:0 auto;
+  border-radius:50%;
+  background:
+    radial-gradient(circle at 34% 28%,rgba(255,255,255,.98) 0%,rgba(255,246,250,.9) 18%,rgba(255,255,255,0) 42%),
+    radial-gradient(circle at 50% 50%,rgba(251,217,209,.6) 0%,rgba(232,223,245,.45) 52%,rgba(215,254,230,.32) 78%,rgba(255,255,255,0) 100%);
+  box-shadow:0 14px 34px rgba(198,163,211,.24),inset 0 0 40px rgba(255,255,255,.6);
+  display:flex;align-items:center;justify-content:center;
+}
+/* 中心问号 */
+.orb b{
+  font-size:62px;font-weight:500;color:#fff;line-height:1;letter-spacing:0;
+  text-shadow:0 2px 10px rgba(214,150,170,.42),0 0 22px rgba(255,255,255,.8);
+  transform:translateY(-4px);
+}
+/* 外圈虚线 */
+.orb::before{
+  content:'';position:absolute;inset:-14px;border-radius:50%;
+  border:1.5px dashed rgba(198,163,211,.5);
+}
+/* 外圈柔光 */
+.orb::after{
+  content:'';position:absolute;inset:-30px;border-radius:50%;pointer-events:none;
+  background:radial-gradient(circle,rgba(232,223,245,.34) 0%,rgba(255,255,255,0) 70%);
+}
+.shaking{animation:shake .5s cubic-bezier(.36,.07,.19,.97) infinite;transform-origin:50% 50%}
+@keyframes shake{
+  10%,90%{transform:translate(-3px,2px) rotate(-5deg)}
+  20%,80%{transform:translate(4px,-2px) rotate(6deg)}
+  30%,50%,70%{transform:translate(-6px,3px) rotate(-9deg)}
+  40%,60%{transform:translate(6px,-2px) rotate(9deg)}
+}
+.rolling{font-size:18px;color:var(--ink-2);padding:26px 0 8px;font-weight:500;letter-spacing:1.5px}
+
+.result{
+  border-radius:var(--r);padding:24px 20px;margin-top:16px;position:relative;
+  background:linear-gradient(165deg,#fff 0%,#FFF9F5 100%);
+  box-shadow:var(--shadow);opacity:0;transform:translateY(16px) scale(.97);
+  transition:all .5s cubic-bezier(.22,1,.36,1);text-align:left;
+}
+.result::before{
+  content:'';position:absolute;inset:0;border-radius:inherit;padding:1.2px;
+  background:linear-gradient(135deg,rgba(251,217,209,.7),rgba(232,223,245,.65) 45%,rgba(215,254,230,.6));
+  -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;
+}
+.result.show{opacity:1;transform:none}
+.result .cap{font-size:11.5px;color:#A88A88;letter-spacing:2.4px;text-align:center;font-weight:400}
+.result .name{font-size:21px;font-weight:500;margin:13px 0 9px;line-height:1.4;word-break:break-word;letter-spacing:1px;text-shadow:0 1px 0 rgba(255,255,255,.9)}
+.result .hint{font-size:14px;color:#5F5158;line-height:1.8;background:#EFFAF3;padding:12px 15px;border-radius:16px;margin-top:14px;font-weight:400}
+.result .divider{height:1px;background:var(--line);margin:17px 0 15px}
+.acts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px}
+.act{border:none;border-radius:999px;padding:12px 4px;font-size:13px;font-family:inherit;cursor:pointer;background:#F7F3F1;color:var(--ink-2);transition:transform .16s;font-weight:500}
+.act:active{transform:scale(.94)}
+.act.fav{background:var(--pink-100);color:#8A5C60}
+.act.blk{background:var(--violet-200);color:#54466A}
+
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:12px}
+.stat{background:var(--card);border-radius:var(--r);padding:17px;box-shadow:var(--shadow-s);text-align:center}
+.stat b{display:block;font-size:21px;font-weight:500;color:#B5707A;text-shadow:0 1px 0 rgba(255,255,255,.9)}
+.stat span{font-size:11.5px;color:var(--ink-3);display:block;margin-top:6px}
+.log{display:flex;align-items:center;gap:11px;padding:12px 0;font-size:14px}
+.log+.log{border-top:1px solid var(--line)}
+.log .dt{font-size:11.5px;color:var(--ink-3);flex:0 0 72px}
+.log .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.tabs{
+  flex:0 0 auto;display:grid;grid-template-columns:repeat(4,1fr);
+  background:rgba(253,249,246,.95);backdrop-filter:blur(14px);
+  border-top:1px solid var(--line);padding:8px 8px calc(8px + env(safe-area-inset-bottom));
+}
+/* 底部导航：纯文字，无图标 */
+.tab{border:none;background:none;cursor:pointer;padding:11px 2px;font-family:inherit;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  color:var(--ink-3);font-size:12.5px;font-weight:500;letter-spacing:.6px;transition:color .2s}
+.tab.on{color:#B5707A;font-weight:500;text-shadow:0 1px 2px rgba(181,112,122,.22)}
+
+.toast{position:absolute;left:50%;bottom:82px;transform:translateX(-50%) translateY(14px);
+  background:rgba(90,74,82,.94);color:#fff;padding:12px 20px;border-radius:999px;font-size:13.5px;
+  opacity:0;transition:all .3s;pointer-events:none;z-index:50;max-width:84%;text-align:center;line-height:1.5}
+.toast.on{opacity:1;transform:translateX(-50%)}
+.cmdlog{margin-top:11px;background:#EAF9F0;border-radius:16px;padding:12px 14px;font-size:12px;color:#4A5A48;line-height:1.7}
+.cmdlog{max-height:250px;overflow-y:auto}
+.item-src{font-size:11px;color:var(--ink-3);opacity:.8;margin-top:5px;line-height:1.5}
+.item-tel{margin-top:6px;font-size:12.5px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.tel-link{color:#96625F;text-decoration:none;font-weight:500;letter-spacing:.6px;background:rgba(251,217,209,.5);border-radius:999px;padding:4px 12px;box-shadow:inset 0 0 0 1px rgba(246,196,188,.7)}
+.tel-link:active{background:var(--pink-200);color:#fff}
+.tel-none{color:var(--ink-3);font-size:11.5px}
+.item-btns{display:flex;flex-direction:column;gap:7px}
+.item-edit{flex:0 0 auto;width:30px;height:30px;border-radius:50%;border:none;background:#F3F0F8;color:#7A6A96;font-size:13px;cursor:pointer;line-height:1;transition:all .16s}
+.item-edit:active{background:var(--violet-200);color:#fff;transform:scale(.9)}
+.editing{background:rgba(215,254,230,.5);border-radius:20px;padding:12px;margin:6px 0}
+.cmdlog b{font-weight:500}
+</style>
+</head>
+<body>
+<div class="phone"> <div class="notch"></div>
+      
+  <div class="statusbar"><span id="clock">18:55</span><span>●●●  100%</span></div>
+      
+
+  <div class="screens"> <section class="screen on" id="s-home"> <div class="phead"> <div>
+          <div class="deco-word">JIE CAI</div>
+      
+          <h1>饭点盲盒</h1>
+      
+          <div class="sub" id="home-sub">今天吃什么，交给一次随机的惊喜</div>
+        </div>
+      
+        <button class="tick" onclick="go('draw')" aria-label="开始抽饭店"></button>
+      </div>
+      
+
+      <div class="card hero">
+        <span class="glow g1"></span>
+        <span class="glow g2"></span>
+        <span class="glow g3"></span>
+        <span class="glow g4"></span>
+        <span class="star st1"></span>
+        <span class="star st2"></span>
+        <div class="hero-in">
+          <div class="hero-rule"></div>
+          <h2>今天想吃点什么呀</h2>
+          <p id="home-count">饭店库还是空的<br>先去添加几家心动餐厅吧</p>
+          <button class="btn btn-primary" style="margin-top:26px" onclick="go('draw')">开始抽饭店</button>
+          <div class="btn-row">
+            <button class="btn btn-mint" onclick="go('manage')">管理我的饭店</button>
+            <button class="btn btn-violet" onclick="go('fav')">收藏 / 避雷</button>
+          </div>
+        </div>
+      </div>
+      
+
+      <div class="card" style="margin-top:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+          <div style="min-width:0">
+            <div style="font-size:15px;font-weight:500">南阳饭店库 · 预置 <span id="ny-total">0</span> 家</div>
+            <div style="font-size:12.5px;color:var(--ink-3);margin-top:6px;line-height:1.7" id="ny-sub">方城烩面 · 牛肉汤 · 板面 · 烧鸡 · 火锅 · 小吃街</div>
+          </div>
+          <button class="btn btn-white btn-sm" onclick="importNanyang()">导入</button>
+        </div>
+      </div>
+
+      <label class="label">今天想怎么吃？</label>
+      
+      <div class="chips" id="home-chips"></div>
+      
+
+      <div class="card" style="margin-top:16px"> <div style="display:flex;align-items:center;justify-content:space-between;gap:12px"> <div style="min-width:0"> <div style="font-size:15px;font-weight:500">今日打卡</div>
+      
+            <div style="font-size:12.5px;color:var(--ink-3);margin-top:6px" id="today-log">还没记录今天吃了什么</div>
+          </div>
+      
+          <button class="btn btn-white btn-sm" onclick="go('stat')">查看</button>
+        </div>
+      </div>
+    </section>
+    
+
+    <section class="screen" id="s-draw"> <div class="phead"> <div><div class="deco-word">CHOU JIANG</div>
+      <h1>盲盒抽取</h1>
+      <div class="sub" id="draw-sub">选好口味偏好，摇一摇就有答案</div></div>
+      
+        <button class="tick on" aria-label="抽签中"></button>
+      </div>
+      
+
+      <div class="card"> <label class="label" style="margin-top:0">口味偏好（可多选）</label>
+      
+        <div class="chips" id="draw-chips"></div>
+      </div>
+      
+
+      <div class="draw-stage">
+        <div class="orb" id="artbox"><b>?</b></div>
+        <div id="rolling" class="rolling" style="display:none">摇 摇 摇 …</div>
+      
+
+        <div class="result" id="result"> <div class="cap">饭点盲盒 · 拆盒成功 </div>
+      
+          <div class="name" id="r-name">—</div>
+      
+          <div><span class="pill grad" id="r-group">—</span></div>
+      
+        <div class="hint" id="r-hint"></div>
+
+        <div id="r-tel-wrap" style="display:none;margin-top:12px">
+          <a id="r-tel" class="btn btn-mint" style="display:block;text-align:center;text-decoration:none" href="#">打电话订座</a>
+          <div class="item-src" id="r-tel-note" style="text-align:center;margin-top:6px"></div>
+        </div>
+
+        <div class="divider"></div>
+      
+          <div class="acts"> <button class="act fav" id="a-fav" onclick="toggleFav()">收藏</button>
+      
+            <button class="act blk" id="a-blk" onclick="askBlock()">不吃</button>
+      
+            <button class="act" id="a-again" onclick="doDraw()">再抽</button>
+          </div>
+      
+          <div class="acts" id="blk-ask" style="display:none;grid-template-columns:1fr 1fr;margin-top:9px"> <button class="act" onclick="blockFood(false)">仅本轮屏蔽</button>
+      
+            <button class="act blk" onclick="blockFood(true)">永久避雷</button>
+          </div>
+        </div>
+      
+
+        <button class="btn btn-primary" style="margin-top:20px" id="btn-draw" onclick="doDraw()">摇一摇，拆盲盒</button>
+      
+        <button class="btn btn-white" style="margin-top:10px;font-size:13.5px" onclick="checkinLast()">就吃它了，打卡记录</button>
+      
+        <button class="btn btn-white" style="margin-top:9px;font-size:13px" onclick="resetRound()">清空本轮屏蔽</button>
+      </div>
+    </section>
+    
+
+    <section class="screen" id="s-manage"> <div class="phead"> <div><div class="deco-word">RESTAURANT</div>
+      <h1>我的饭店库</h1>
+      <div class="sub" id="m-sub">一家一家攒起来，都是你的私藏</div></div>
+      
+        <button class="tick on" aria-label="已添加"></button>
+      </div>
+      
+
+      <div class="card" style="margin-bottom:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+          <b style="font-size:15px;font-weight:500">南阳本地饭店库</b><span class="pill mint" id="ny-tag">待导入</span>
+        </div>
+        <div style="font-size:12.5px;color:var(--ink-3);margin-top:9px;line-height:1.85">
+          方城烩面、新野板面、王记牛肉汤、程记甫胡辣汤、镇平烧鸡、府衙小吃街、本地火锅与深夜烧烤……<br>
+          来源：高德2025南阳美食状元榜 · 本地口碑老店合集 · 南阳美食与夜市攻略（网络公开整理）<br>
+          其中 <b id="ny-tel-total">0</b> 家带公开电话，可直接拨打；没收录的店点右侧「改」就能自己补号码。
+        </div>
+        <button class="btn btn-primary" style="margin-top:14px" onclick="importNanyang()">＋ 一键导入南阳饭店库</button>
+        <button class="btn btn-white" style="margin-top:9px;font-size:13px" onclick="previewNanyang()">看看都有哪些家</button>
+        <div class="cmdlog" id="ny-preview" style="display:none"></div>
+      </div>
+
+      <div class="card"> <label class="label" style="margin-top:0">饭店名称 *</label>
+        <input class="input" id="f-name" placeholder="例：桂林米粉" oninput="syncExample()"> <label class="label">口味提示词</label>
+        <input class="input" id="f-tag" placeholder="例：咸香、汤粉、就近老店"> <label class="label">电话（选填）</label>
+        <input class="input" id="f-phone" inputmode="tel" placeholder="例：13707637565 或 0377-60555153"> <label class="label">分组</label>
+        <select class="input" id="f-group"> <option value="面食">面食</option><option value="汤类">汤类</option>
+          <option value="家常菜">家常菜</option><option value="火锅">火锅</option>
+          <option value="烧烤">烧烤</option><option value="小吃">小吃</option>
+          <option value="奶茶">奶茶</option><option value="西餐">西餐</option>
+          <option value="简餐">简餐</option><option value="其他">其他</option>
+        </select>
+        <div id="edit-bar" style="display:none;margin-top:12px;font-size:12px;color:#5C7A64;background:rgba(215,254,230,.5);border-radius:14px;padding:10px 13px;line-height:1.6">
+          正在编辑：<b id="edit-name">—</b><br>改完点下面的「保存修改」
+        </div>
+        <button class="btn btn-primary" style="margin-top:16px" id="btn-save" onclick="addFood()">＋ 添加到饭店库</button>
+        <button class="btn btn-white" style="margin-top:9px;font-size:13px;display:none" id="btn-cancel" onclick="cancelEdit()">取消编辑</button>
+      
+        <div class="cmdlog" id="cmdlog" style="display:none"></div>
+      </div>
+      
+
+      <div id="list-wrap" style="margin-top:14px"></div>
+    </section>
+    
+
+    <section class="screen" id="s-fav"> <div class="phead"> <div><div class="deco-word">FAVORITE</div>
+      <h1>收藏 & 避雷</h1>
+      <div class="sub">喜欢的优先抽，不想吃的果断屏蔽</div></div>
+      
+        <button class="tick on" aria-label="收藏中"></button>
+      </div>
+      
+      <div class="card"> <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px"> <b style="font-size:15px;font-weight:500">收藏夹</b><span class="pill mint">下次优先抽中</span>
+        </div>
+      
+        <div id="fav-list"></div>
+      </div>
+      
+      <div class="card"> <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px"> <b style="font-size:15px;font-weight:500">避雷清单</b><span class="pill ghost">永久不再抽中</span>
+        </div>
+      
+        <div id="blk-list"></div>
+      </div>
+    </section>
+    
+
+    <section class="screen" id="s-stat"> <div class="phead"> <div><div class="deco-word">RECORD</div>
+      <h1>饭点记录</h1>
+      <div class="sub">看看这个月你都吃了些什么</div></div>
+      
+        <button class="tick on" aria-label="记录中"></button>
+      </div>
+      
+      <div class="stats"> <div class="stat"><b id="st-total">0</b><span>累计打卡</span></div>
+      
+        <div class="stat"><b id="st-month">0</b><span>本月打卡</span></div>
+      </div>
+      
+      <div class="card"> <b style="font-size:15px;font-weight:500">本月吃过</b>
+        <div id="month-list" style="margin-top:6px"></div>
+      </div>
+      
+      <div class="card"> <b style="font-size:15px;font-weight:500">全部记录</b>
+        <div id="all-list" style="margin-top:6px"></div>
+      
+        <button class="btn btn-white" style="margin-top:12px;font-size:13px" onclick="clearLogs()">清空打卡记录</button>
+      </div>
+    </section>
+
+  </div>
+
+  <nav class="tabs">
+    <button class="tab on" data-s="home" onclick="go('home')">首页</button>
+    <button class="tab" data-s="draw" onclick="go('draw')">抽饭店</button>
+    <button class="tab" data-s="manage" onclick="go('manage')">饭店库</button>
+    <button class="tab" data-s="fav" onclick="go('fav')">收藏避雷</button>
+  </nav>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+
+/* ---------- 数据层 ---------- */
+const KEY='fandian_manghe_v1';
+const GROUPS=['面食','汤类','火锅','烧烤','家常菜','小吃','奶茶','西餐','简餐','其他'];
+const FILTERS=['南阳本地','清淡','重口','辣','一人食','快速','便宜','解馋','约会'];
+
+/* ---------- 南阳本地饭店库（预置数据）----------
+   来源：高德地图2025南阳美食状元榜 / 南阳本地口碑老店合集 / 南阳美食与夜市攻略（网络公开整理）
+   g=分组  w=默认权重  r=所在区县或地标  s=来源标记 */
+const NY_SRC={'高德':'高德2025南阳美食状元榜','老店':'本地人口碑老店合集','攻略':'南阳美食攻略与夜市合集','口碑':'网络口碑推荐'};
+const NANYANG_PRESET=[
+  /* ---------------- 面食 ---------------- */
+  {n:'方城炝锅烩面（七一路总店）',t:'七一路 · 炝锅烩面 羊骨高汤 · 配糖蒜荆芥 · 便宜快速一人食',g:'面食',w:4,r:'宛城',s:'攻略'},
+  {n:'郭记方城烩面馆（工业南路店）',t:'工业南路 · 羊肉烩面 汤能挂勺 · 便宜饱腹',g:'面食',w:3,r:'宛城',s:'老店'},
+  {n:'方城烩面故事',t:'高汤烩面 面宽劲道 · 秘制羊油辣 · 店大停车方便',g:'面食',w:3,r:'方城',s:'高德'},
+  {n:'李家全羊烩面馆（儒林御座店）',t:'儒林御座 · 全羊汤烩面 · 分量足 可少盐清淡',g:'面食',w:3,r:'卧龙',s:'老店'},
+  {n:'孙记新野板面王（新华路总店）',t:'新华路 · 非遗新野板面 现摔宽面 · 香辣解馋',g:'面食',w:4,r:'新野',s:'老店'},
+  {n:'新野板面张飞馆',t:'手工摔面 牛油辣臊子 · 夜宵解馋 · 十点后还开',g:'面食',w:3,r:'新野',s:'攻略'},
+  {n:'马武申牛杂窝子面（建设路老店）',t:'建设路 · 麻酱干拌窝子面 牛杂现炖 · 可续面 一人食',g:'面食',w:3,r:'宛城',s:'老店'},
+  {n:'邓州窝子面（滨河路早市）',t:'滨河路早市 · 清晨现做 · 五元一碗 便宜快速',g:'面食',w:2,r:'邓州',s:'攻略'},
+  {n:'浴池扯面馆',t:'四十多年老店 · 扯面劲道 · 烧豆筋烧腐竹是隐藏菜单',g:'面食',w:3,r:'宛城',s:'老店'},
+  {n:'闫天喜饺子馆',t:'清光绪年间百年老店 · 现点现包 · 皮薄馅厚 筋道',g:'面食',w:3,p:'0377-63222862',r:'宛城',s:'老店'},
+  {n:'范记酸汤饺烩面（长江北路店）',t:'长江北路 · 酸汤饺 馅饱满 · 人均二十 便宜',g:'面食',w:2,r:'宛城',s:'口碑'},
+  /* ---------------- 汤类 ---------------- */
+  {n:'王记牛肉汤（和平街老店）',t:'和平街 · 上过央视 清汤牛肉 · 原汤免费续 · 清淡一人食',g:'汤类',w:5,p:'13707637565',r:'宛城',s:'高德'},
+  {n:'程记甫胡辣汤（宛城老城店）',t:'老城 · 二十余年老字号 · 水煎包泡汤 · 便宜快速',g:'汤类',w:4,p:'0377-60555153',r:'宛城',s:'老店'},
+  {n:'黄波老店牛肉汤菜馆（建设西路店）',t:'建设西路 · 凌晨四点熬汤 现切黄牛肉 · 芝麻锅盔 · 一人食',g:'汤类',w:4,p:'13949338702（张衡东路店）',r:'卧龙',s:'老店'},
+  {n:'福牛巷南阳牛肉汤（宛城龙达店）',t:'龙达 · 平价牛肉汤 肉质软烂 · 十几块吃饱',g:'汤类',w:3,p:'16603772628',r:'宛城',s:'攻略'},
+  {n:'南阳老三羊肉汤（卧龙区老店）',t:'卧龙 · 伏牛山散养山羊 · 汤白鲜而不膻 · 五点半开门',g:'汤类',w:3,r:'卧龙',s:'口碑'},
+  {n:'邓州拐子糊辣汤',t:'百年配方 · 羊肉面筋糊汤 · 香辣醇厚重口',g:'汤类',w:3,r:'邓州',s:'攻略'},
+  {n:'河街羊肉糊汤面',t:'河街 · 老回民街 羊杂糊汤浇面 · 重口解馋',g:'汤类',w:3,r:'宛城',s:'攻略'},
+  {n:'白河南桥头牛肉汤',t:'白河南 · 三代人煤火熬汤 · 奶白牛骨汤 三掺汤暗号',g:'汤类',w:3,r:'宛城',s:'攻略'},
+  {n:'新华路无名胡辣汤',t:'新华路 · 三十年路边摊 · 油条卷菜泡汤 只卖到上午十点',g:'汤类',w:3,r:'宛城',s:'攻略'},
+  {n:'老城一绝牛肉胡辣汤',t:'老城 · 牛肉软烂 · 汤底香辣 早餐快速',g:'汤类',w:2,r:'宛城',s:'口碑'},
+  /* ---------------- 火锅 ---------------- */
+  {n:'额尔敦传统涮（南阳新市政府店）',t:'范蠡东路 · 内蒙清水涮羊肉 立盘不倒 · 人均85 聚餐',g:'火锅',w:4,p:'0377-61386888',r:'宛城',s:'口碑'},
+  {n:'菜园子串串火锅（领秀天街店）',t:'西峡七一路领秀天街 · 牛肉签签实在 · 深夜烟火气 解馋',g:'火锅',w:4,p:'18538988781',r:'西峡',s:'高德'},
+  {n:'三美地摊鱼火锅（南航店）',t:'南航 · 活鱼现杀 · 59.9双人餐 自助涮菜 · 便宜',g:'火锅',w:4,r:'宛城',s:'攻略'},
+  {n:'潮小凤石橄榄脆皮鸡煲（南阳总店）',t:'草本清汤鸡煲 · 先酥后涮 · 清淡养生 秋冬暖胃',g:'火锅',w:3,r:'宛城',s:'高德'},
+  {n:'龙继斑鱼庄（凯旋中心店）',t:'凯旋中心 · 斑鱼片 汤底清淡有层次 · 亲子家庭聚餐',g:'火锅',w:3,p:'0377-63027766（建业凯旋广场店）',r:'宛城',s:'高德'},
+  {n:'火凤祥鲜货火锅',t:'鲜货当天采购 · 环境不错 · 适合约会',g:'火锅',w:3,p:'0377-66765555（南阳旗舰店）',r:'宛城',s:'口碑'},
+  {n:'前程市井火锅',t:'市井风 · 菜品新鲜 · 价格亲民 朋友小聚',g:'火锅',w:3,r:'宛城',s:'口碑'},
+  {n:'林淑芬麻辣豆花烤鱼（总店）',t:'豆花烤鱼 鱼肉同烤 · 街边烟火气 · 重口辣',g:'火锅',w:3,r:'宛城',s:'高德'},
+  {n:'辣三寸火锅',t:'地道辣锅 · 人气旺 饭点要等位',g:'火锅',w:3,r:'宛城',s:'口碑'},
+  {n:'凝翠庭院火锅',t:'庭院式环境 · 适合家庭聚餐约会',g:'火锅',w:2,r:'宛城',s:'口碑'},
+  {n:'孃孃老火锅',t:'老字号经典锅底 · 环境安静 商务宴请',g:'火锅',w:2,p:'15670255773',r:'宛城',s:'口碑'},
+  /* ---------------- 烧烤 ---------------- */
+  {n:'老大烧烤（旗舰店）',t:'秘制牛肉串 · 烤五花 · 炒虾尾 · 夜宵聚餐',g:'烧烤',w:3,r:'宛城',s:'攻略'},
+  {n:'避道巷（张衡东路店）',t:'张衡东路 · 复古港风烧烤 · 蒜蓉乳山生蚝 · 拍照打卡约会',g:'烧烤',w:3,r:'宛城',s:'攻略'},
+  {n:'人民路烤面筋',t:'人民路 · 芝麻酱炭烤 · 三块钱解馋 便宜',g:'烧烤',w:2,r:'宛城',s:'攻略'},
+  /* ---------------- 家常菜 ---------------- */
+  {n:'方氏蒸菜馆（人民路老店）',t:'人民路 · 二十年蒸菜代表 · 蒸排骨 条子肉扣碗 · 清淡',g:'家常菜',w:4,r:'宛城',s:'攻略'},
+  {n:'徐家菜馆（卧龙区杜诗路）',t:'杜诗路 · 本地家常菜 · 菜量大价格低 家庭聚餐',g:'家常菜',w:3,p:'0377-63212016（中州东路店）',r:'卧龙',s:'老店'},
+  {n:'王记老式扣碗店（聚贤街）',t:'聚贤街 · 老式扣碗 牛肉酥肉莲菜 · 上桌有仪式感',g:'家常菜',w:3,r:'宛城',s:'攻略'},
+  {n:'老南阳餐馆（工农路）',t:'工农路 · 松针包子 肉片汤 · 六七十年代老味道',g:'家常菜',w:3,r:'宛城',s:'老店'},
+  {n:'豫果园南阳锅贴饺（躬耕店）',t:'躬耕路 · 锅贴外脆里嫩 · 菜量扎实 家庭聚餐',g:'家常菜',w:3,p:'0377-66786667',r:'卧龙',s:'高德'},
+  {n:'灌记砂锅（府衙旁老店）',t:'府衙旁 · 二十余年家常砂锅 · 紧邻景区但没溢价 便宜',g:'家常菜',w:3,p:'0377-60891999（建业凯旋广场店）',r:'宛城',s:'攻略'},
+  {n:'新华路砂锅居',t:'新华路 · 煤火慢煨 · 酥肉砂锅必点 夜宵',g:'家常菜',w:2,r:'宛城',s:'攻略'},
+  {n:'遇江南湖北菜（师院对面）',t:'师院对面 · 湖北小炒 辣椒炒肉 · 性价比高 重口下饭',g:'家常菜',w:3,r:'卧龙',s:'老店'},
+  {n:'湘西小馆（滨河路店）',t:'滨河路 · 湘菜小炒 辣子鸡丁 · 道道下饭 聚餐',g:'家常菜',w:3,p:'0377-63283777',r:'宛城',s:'高德'},
+  {n:'厨八怪民俗菜（明山路店）',t:'明山路 · 菜馍老笨鸡 · 民俗氛围 上菜有仪式感',g:'家常菜',w:3,p:'0377-66981999',r:'宛城',s:'高德'},
+  {n:'豫八方·汴京烤鸭',t:'枣木烤鸭 皮脆如纸 · 包间聚餐 · 停车方便',g:'家常菜',w:3,p:'0377-68028889（独山大道店）',r:'宛城',s:'高德'},
+  {n:'侯记烧鸡楼（镇平）',t:'镇平 · 非遗烧鸡 骨酥肉烂 · 干锅鸡三宝 值得专程',g:'家常菜',w:3,p:'0377-65900999',r:'镇平',s:'老店'},
+  {n:'镇平老张家黄焖兔',t:'镇平 · 砂锅焖兔 配红薯粉条 · 建议提前一天预约',g:'家常菜',w:2,r:'镇平',s:'口碑'},
+  {n:'白土岗辣子鸡（中州路总店）',t:'南召白土岗 · 跑山鸡猛火爆炒 · 麻辣干香 重口解馋',g:'家常菜',w:3,p:'0377-63519607（北京大道店）',r:'南召',s:'攻略'},
+  {n:'灶丰食代饭店（范蠡路店）',t:'范蠡路 · 铁锅炖大鹅 · 东北待客菜 人均五十',g:'家常菜',w:3,r:'宛城',s:'口碑'},
+  {n:'黑土风情铁锅炖（人民北路店）',t:'人民北路 · 铁锅炖大鹅 · 分量足实在 聚餐',g:'家常菜',w:2,p:'0377-66763333（滨河大道店）',r:'宛城',s:'高德'},
+  {n:'南阳王府饭店',t:'老字号饭店 · 虾仁鲍鱼粉丝煲 · 宴请有面子',g:'家常菜',w:2,p:'0377-63329038（新华东路）',r:'宛城',s:'老店'},
+  {n:'天禧盛宴·马小六饭店',t:'家常味稳定 · 环境舒适 · 本地人也会回头',g:'家常菜',w:2,r:'宛城',s:'高德'},
+  /* ---------------- 小吃 ---------------- */
+  {n:'府衙小吃街',t:'民主街 · 一站式小吃 板面锅盔凉粉 · 夜宵首选',g:'小吃',w:4,r:'宛城',s:'攻略'},
+  {n:'师院小吃街',t:'卧龙路 · 学生党天堂 布袋馍鸡叉骨土豆粉 · 便宜',g:'小吃',w:3,r:'卧龙',s:'攻略'},
+  {n:'解放路夜市',t:'解放路 · 老南阳深夜食堂 羊肉炕馍炒凉粉 · 重口',g:'小吃',w:3,r:'宛城',s:'攻略'},
+  {n:'新华城市广场美食街',t:'新华西路 · 黄焖鸡酸菜鱼烤面筋卷饼 · 年轻人多',g:'小吃',w:3,r:'卧龙',s:'攻略'},
+  {n:'唐河凉粉',t:'唐河 · 四百年绿豆凉粉 · 芥末蒜汁 清爽解腻',g:'小吃',w:3,r:'唐河',s:'攻略'},
+  {n:'博望锅盔',t:'方城博望 · 三国军粮 干香耐嚼 · 久放不坏',g:'小吃',w:2,r:'方城',s:'攻略'},
+  {n:'内乡缸炉烧饼',t:'内乡 · 缸炉炭烤 · 芝麻香酥 配胡辣汤刚好',g:'小吃',w:2,r:'内乡',s:'攻略'},
+  {n:'梅溪郭麻花',t:'梅溪 · 非遗麻花 · 茶点伴手礼 便宜',g:'小吃',w:2,r:'宛城',s:'攻略'},
+  {n:'桐柏豆筋卷大葱',t:'桐柏 · 山泉水豆筋 · 蘸芝麻酱 新华城市广场有摊',g:'小吃',w:2,r:'桐柏',s:'攻略'},
+  {n:'社旗桥头三粉宴',t:'社旗 · 红薯粉条粉皮 · 酸辣粉浆面条 便宜',g:'小吃',w:2,r:'社旗',s:'老店'},
+  {n:'赊店古镇美食街',t:'社旗赊店 · 赊店老酒鸡 · 石子馍 逛古镇顺路吃',g:'小吃',w:2,r:'社旗',s:'攻略'},
+  /* ---------------- 奶茶 ---------------- */
+  {n:'张阿姨奶茶（府衙小吃街店）',t:'府衙小吃街 · 血糯米奶茶 · 料足不腻 便宜',g:'奶茶',w:3,r:'宛城',s:'攻略'},
+  {n:'甜啦啦（南阳各门店）',t:'各门店 · 霸气凤梨乌龙 · 性价比高 便宜解渴',g:'奶茶',w:3,r:'宛城',s:'攻略'},
+  {n:'小确茶（民主街店）',t:'民主街 · 香芋木瓜 · 网红茶饮 下午茶',g:'奶茶',w:3,r:'宛城',s:'攻略'},
+  {n:'茶公子与茶女仕（民主街店）',t:'民主街 · 香芋紫米奶 · 古风装修 下午茶约会',g:'奶茶',w:3,r:'宛城',s:'攻略'},
+  {n:'廣芳园（新田360广场店）',t:'新田360四楼 · 港式丝袜奶茶 · 冰火菠萝油 约会',g:'奶茶',w:2,r:'宛城',s:'攻略'},
+  {n:'漫猫咖啡',t:'北欧风 · 撸猫圣地 · 下午茶约会 出片',g:'奶茶',w:3,r:'宛城',s:'攻略'},
+  {n:'李师傅烘焙（宇信凯旋城）',t:'建设东路 · 百余款甜品 · 红丝绒 下午茶',g:'奶茶',w:2,r:'宛城',s:'攻略'},
+  {n:'三色鸽（总店）',t:'地标总店 · 童年老味道 · 现烤蛋糕 咸香糕点',g:'奶茶',w:3,p:'0377-66081886（人民路与光武路）',r:'宛城',s:'高德'},
+  {n:'七茉花园餐厅',t:'花园环境 · 甜品精致 · 出片圣地 约会',g:'奶茶',w:3,r:'宛城',s:'高德'},
+  /* ---------------- 西餐 / 自助 ---------------- */
+  {n:'菲斯特融合餐饮（建业凯旋广场）',t:'建业凯旋 · 铁板T骨牛扒 · 点牛排送自助 约会',g:'西餐',w:3,r:'宛城',s:'攻略'},
+  {n:'漫时光时尚餐厅（人民路）',t:'光武路口 · 童话风环境 · 下午茶 约会',g:'西餐',w:2,r:'宛城',s:'攻略'},
+  {n:'北城印象自助餐',t:'十三区三百种美食 · 烤肉火锅海鲜 · 人均69 聚餐',g:'西餐',w:3,r:'宛城',s:'攻略'},
+  {n:'食尚派自助美食百汇（豪盛百货店）',t:'豪盛百货 · 寿司烤肉甜品台 · 双拼畅吃 聚餐',g:'西餐',w:3,p:'0377-66723333',r:'宛城',s:'高德'}
+];
+let db=load();
+function load(){
+  try{const r=JSON.parse(localStorage.getItem(KEY));
+    if(r&&Array.isArray(r.foods))return{foods:r.foods,logs:r.logs||[],round:r.round||[]};
+  }catch(e){}
+  return{foods:[],logs:[],round:[]};
+}
+function save(){localStorage.setItem(KEY,JSON.stringify(db));}
+const $=id=>document.getElementById(id);
+
+function toast(t){const el=$('toast');el.innerHTML=t;el.classList.add('on');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('on'),1900)}
+function go(s){
+  document.querySelectorAll('.screen').forEach(x=>x.classList.toggle('on',x.id==='s-'+s));
+  const hi=s==='stat'?'manage':s;
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x.dataset.s===hi));
+  document.querySelector('.screens').scrollTop=0;
+  if(s==='manage')renderList();if(s==='fav')renderFav();
+  if(s==='stat')renderStat();if(s==='home')renderHome();
+}
+function tick(){const d=new Date();$('clock').textContent=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')}
+setInterval(tick,20000);tick();
+
+let filter=[];
+function renderChips(){
+  const html=FILTERS.map(f=>'<button class="chip'+(filter.includes(f)?' on':'')+'" onclick="togFilter(\''+f+'\')">'+f+'</button>').join('');
+  $('draw-chips').innerHTML=html;$('home-chips').innerHTML=html;
+}
+function togFilter(f){
+  filter=filter.includes(f)?filter.filter(x=>x!==f):[...filter,f];
+  renderChips();
+}
+
+let lastId=null,drawing=false;
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function hitFilter(f,k){
+  if(k==='南阳本地')return f.region==='南阳';
+  const hay=((f.name||'')+(f.tag||'')+f.group).toLowerCase();
+  return hay.includes(k.toLowerCase());
+}
+function pool(){
+  const rnd=new Set(db.round);
+  let list=db.foods.filter(f=>!f.blk&&!rnd.has(f.id));
+  if(filter.length){
+    const hit=list.filter(f=>filter.some(k=>hitFilter(f,k)));
+    if(hit.length)list=hit;
+  }
+  return list;
+}
+function doDraw(){
+  if(drawing)return;
+  const list=pool();
+  if(!list.length){toast(db.foods.length?'符合条件的店都被避雷啦':'饭店库还是空的，先去添加几家吧');return}
+  drawing=true;lastId=null;
+  $('btn-draw').style.display='none';
+  $('blk-ask').style.display='none';
+  $('r-tel-wrap').style.display='none';
+  $('result').classList.remove('show');
+  $('rolling').style.display='block';
+  $('artbox').classList.add('shaking');
+  $('r-name').textContent='—';$('r-hint').textContent='';$('r-group').textContent='';
+  $('a-fav').textContent=' 收藏';$('a-fav').className='act fav';
+
+  setTimeout(()=>{
+    const total=list.reduce((s,f)=>s+(f.w||3),0);
+    let r=Math.random()*total,pick=list[0];
+    for(const f of list){r-=(f.w||3);if(r<=0){pick=f;break}}
+    lastId=pick.id;
+    $('rolling').style.display='none';
+    $('artbox').classList.remove('shaking');
+    $('r-name').textContent=pick.name;
+    $('r-group').textContent=pick.group;
+    $('r-hint').innerHTML=pick.tag?(' <b>提示词</b>：'+esc(pick.tag)):' 还没有写提示词，去饭店库补一个吧';
+    if(pick.p){
+      $('r-tel').textContent='拨打电话 '+pick.p;
+      $('r-tel').href='tel:'+telHref(pick.p);
+      $('r-tel-note').textContent=TEL_SRC;
+      $('r-tel-wrap').style.display='block';
+    }else{
+      $('r-tel-wrap').style.display='none';
+    }
+    $('a-fav').textContent=pick.fav?' 已收藏':' 收藏';
+    $('result').classList.add('show');
+    $('btn-draw').style.display='block';
+    $('btn-draw').textContent=' 再抽一次';
+    drawing=false;
+  },1900);
+}
+function cur(){return db.foods.find(f=>f.id===lastId)}
+function toggleFav(){
+  const f=cur();if(!f)return;
+  f.fav=!f.fav;save();
+  $('a-fav').textContent=f.fav?' 已收藏':' 收藏';
+  toast(f.fav?' 已加入收藏夹，下次优先抽你':'已取消收藏');
+  renderHome();
+}
+function askBlock(){$('blk-ask').style.display=$('blk-ask').style.display==='none'?'grid':'none'}
+function blockFood(permanent){
+  const f=cur();if(!f)return;
+  if(permanent){f.blk=true}else{if(!db.round.includes(f.id))db.round.push(f.id)}
+  save();renderHome();
+  toast(permanent?' 已加入避雷清单':' 本轮不再抽这家');
+  doDraw();
+}
+function resetRound(){db.round=[];save();toast(' 本轮屏蔽已清空');renderHome()}
+function checkinLast(){
+  const f=cur();
+  if(!f){toast('先抽一次再打卡呀');return}
+  db.logs.unshift({id:f.id,name:f.name,t:Date.now()});
+  save();renderHome();renderStat();
+  toast(' 打卡成功：'+f.name);
+}
+
+let editId=null;
+function resetForm(){
+  editId=null;
+  $('f-name').value='';$('f-tag').value='';$('f-phone').value='';
+  $('btn-save').textContent='＋ 添加到饭店库';
+  $('btn-cancel').style.display='none';
+  $('edit-bar').style.display='none';
+}
+function addFood(){
+  const n=$('f-name').value.trim(),t=$('f-tag').value.trim(),g=$('f-group').value,ph=$('f-phone').value.trim();
+  if(!n){toast('给这家店起个名字吧');$('f-name').focus();return}
+  if(editId){
+    const f=db.foods.find(x=>x.id===editId);
+    if(!f){editId=null;resetForm();toast('这家已经被删掉了');renderList();return}
+    if(db.foods.some(x=>x.name===n&&x.id!==editId)){toast('已经有一家同名的啦');return}
+    f.name=n;f.tag=t;f.group=g;f.p=ph;
+    save();resetForm();renderList();renderHome();renderFav();
+    toast('已更新：'+n+(ph?' · 电话已保存':''));
+    const el=$('cmdlog');if(el){el.style.display='block';el.innerHTML='<b>已保存修改</b><br>'+esc(n)+'<br>分组：'+g+(ph?'　电话：'+esc(ph):'　电话：空');}
+    return;
+  }
+  if(db.foods.some(f=>f.name===n)){toast('这家已经在库里的啦');return}
+  db.foods.push({id:Date.now()+''+Math.random().toString(36).slice(2,6),name:n,tag:t,group:g,w:3,fav:false,blk:false,p:ph});
+  save();resetForm();
+  toast(' 添加成功：'+n);
+  renderList();renderHome();showCmd('添加',n,t,g,ph);
+}
+function editFood(id){
+  const f=db.foods.find(x=>x.id===id);if(!f)return;
+  editId=id;
+  $('f-name').value=f.name;$('f-tag').value=f.tag||'';
+  $('f-group').value=GROUPS.includes(f.group)?f.group:'其他';
+  $('f-phone').value=f.p||'';
+  $('btn-save').textContent='保存修改';
+  $('btn-cancel').style.display='block';
+  $('edit-bar').style.display='block';
+  $('edit-name').textContent=f.name;
+  const el=$('cmdlog');
+  if(el){el.style.display='block';el.innerHTML='<b>编辑中</b><br>'+esc(f.name)+(f.p?'<br>当前电话：'+esc(f.p):'<br>还没收录电话，可以自己补一个')+'<br>改完点「保存修改」';}
+  document.querySelector('.screens').scrollTop=0;
+}
+function cancelEdit(){
+  resetForm();
+  const el=$('cmdlog');if(el)el.style.display='none';
+  toast('已取消编辑');
+}
+function showCmd(a,n,t,g,ph){
+  $('cmdlog').style.display='block';
+  $('cmdlog').innerHTML='<b>指令已识别</b><br>添加：'+esc(n)+(t?'｜'+esc(t):'')+'<br>分组：'+g+'　默认权重：3'+(ph?'<br>电话：'+esc(ph):'');
+}
+function syncExample(){
+  const v=$('f-name').value.trim();
+  $('cmdlog').style.display=v?'block':'none';
+  if(v)$('cmdlog').innerHTML='<b>指令预览</b><br>添加：'+esc(v)+($('f-tag').value.trim()?'｜'+esc($('f-tag').value.trim()):'');
+}
+/* ---------- 南阳饭店库：导入 / 预览 / 电话 ---------- */
+const TEL_SRC='电话来自公开黄页（高德·电话邦·联途·南都行·携程去哪儿等），可能变更，以地图为准';
+let nySeq=0;
+function nyNewId(){nySeq++;return Date.now().toString(36)+nySeq.toString(36)+Math.random().toString(36).slice(2,6)}
+function nyPending(){const has=new Set(db.foods.map(f=>f.name));return NANYANG_PRESET.filter(p=>!has.has(p.n))}
+function telHref(p){return String(p||'').replace(/[^0-9+]/g,'')}
+function telCount(){return db.foods.filter(f=>f.p&&f.p.trim()).length}
+function syncPresetPhones(){
+  const by=new Map(db.foods.map(f=>[f.name,f]));let n=0;
+  NANYANG_PRESET.forEach(p=>{
+    const f=by.get(p.n);if(!f)return;
+    if(p.p&&f.p!==p.p){f.p=p.p;n++}
+    if(!f.region)f.region='南阳';
+    if(!f.src)f.src=NY_SRC[p.s]||'';
+  });
+  return n;
+}
+function importNanyang(){
+  const pend=nyPending(),fixed=syncPresetPhones();
+  if(!pend.length){
+    if(fixed){save();renderList();renderHome();renderFav();toast('已为 '+fixed+' 家补齐电话号码')}
+    else toast('南阳饭店库已经全部导入啦（共'+NANYANG_PRESET.length+' 家）');
+    return;
+  }
+  pend.forEach(p=>{
+    db.foods.push({id:nyNewId(),name:p.n,tag:p.t,group:p.g,w:p.w||3,fav:false,blk:false,region:'南阳',src:NY_SRC[p.s]||'',p:p.p||''});
+  });
+  save();renderList();renderHome();renderFav();
+  const withTel=NANYANG_PRESET.filter(p=>p.p).length;
+  toast('已导入南阳本地 '+pend.length+' 家餐厅'+(withTel?' · 含 '+withTel+' 个电话':''));
+  const el=$('cmdlog');
+  if(el){el.style.display='block';
+    el.innerHTML='<b>南阳饭店库已导入</b><br>新增：'+(pend.length+fixed)+' 家 ｜ 库里共 '+db.foods.length+' 家<br>已收录电话：'+telCount()+' 家（'+TEL_SRC.slice(0,10)+'…）<br>覆盖分组：'+GROUPS.filter(g=>db.foods.some(f=>f.group===g)).join('、')+'<br>提示：抽签页勾「南阳本地」，只在本地口碑店里抽';}
+}
+function previewNanyang(){
+  const el=$('ny-preview');if(!el)return;
+  if(el.style.display==='block'){el.style.display='none';return}
+  const has=new Set(db.foods.map(f=>f.name));
+  let html='<b>南阳饭店库 共 '+NANYANG_PRESET.length+' 家</b>（打 ✓ 的已导入，带电话的已标号码）';
+  GROUPS.forEach(g=>{
+    const l=NANYANG_PRESET.filter(p=>p.g===g);
+    if(!l.length)return;
+    html+='<div style="margin-top:7px"><b>'+g+'</b>（'+l.length+'）：'+l.map(p=>esc(p.n)+(has.has(p.n)?' ✓':'')+(p.p?'（'+esc(p.p)+'）':'')).join('、')+'</div>';
+  });
+  html+='<div style="margin-top:8px">'+TEL_SRC+'</div>';
+  el.innerHTML=html;el.style.display='block';
+}
+function delFood(id){
+  const f=db.foods.find(x=>x.id===id);if(!f)return;
+  db.foods=db.foods.filter(x=>x.id!==id);
+  db.round=db.round.filter(x=>x!==id);
+  save();renderList();renderHome();renderFav();
+  toast('已删除：'+f.name);
+}
+function setW(id,d){
+  const f=db.foods.find(x=>x.id===id);if(!f)return;
+  f.w=Math.max(1,Math.min(5,f.w+d));save();renderList();
+}
+function renderList(){
+  const w=$('list-wrap');if(!w)return;
+  $('m-sub').textContent=db.foods.length?('共'+db.foods.length+' 家 · 已收录电话 '+telCount()+' 家 · 点 − ＋ 调概率'):'一家一家攒起来，都是你的私藏';
+  if(!db.foods.length){
+    w.innerHTML='<div class="card"><div class="empty"><div class="ico"></div><p>还没有添加任何饭店<br>从你最熟悉的一家开始吧</p></div></div>';
+    return;
+  }
+  let html='';
+  GROUPS.forEach(g=>{
+    const list=db.foods.filter(f=>f.group===g);
+    if(!list.length)return;
+    html+='<div class="card"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span class="pill grad">'+g+'</span><span style="font-size:11.5px;color:var(--ink-3)">'+list.length+' 家</span></div>';
+    list.forEach(f=>{
+      html+='<div class="item"><div class="item-main">'
+        +'<div class="item-name">'+esc(f.name)
+        +(f.region?'<span class="pill mint" style="font-size:11px;padding:4px 10px">'+esc(f.region)+'本地</span>':'')
+        +(f.fav?'<span class="pill grad" style="font-size:11px;padding:4px 10px">收藏</span>':'')
+        +(f.blk?'<span class="pill ghost" style="font-size:11px;padding:4px 10px">避雷</span>':'')+'</div>'
+        +(f.tag?'<div class="item-sub">'+esc(f.tag)+'</div>':'')
+        +(f.src?'<div class="item-src">来源：'+esc(f.src)+'</div>':'')
+        +'<div class="item-tel">'+(f.p
+          ? '<span class="tel-none">电话</span><a class="tel-link" href="tel:'+telHref(f.p)+'">'+esc(f.p)+'</a>'
+          : '<span class="tel-none">电话未收录 · 点右侧「改」补一个</span>')+'</div>'
+        +'<div class="weight"><span>权重</span>'
+        +'<button class="wbtn" onclick="setW(\''+f.id+'\',-1)">−</button>'
+        +'<span class="wdots">'+[1,2,3,4,5].map(i=>'<i class="wdot'+(i<=f.w?' f':'')+'"></i>').join('')+'</span>'
+        +'<button class="wbtn" onclick="setW(\''+f.id+'\',1)">＋</button>'
+        +'<span style="margin-left:4px">'+(f.w>=4?'很容易抽到':f.w<=2?'几乎抽不到':'正常')+'</span></div>'
+        +'</div><div class="item-btns"><button class="item-edit" onclick="editFood(\''+f.id+'\')" title="编辑这家">改</button>'
+        +'<button class="item-del" onclick="delFood(\''+f.id+'\')">×</button></div></div>';
+    });
+    html+='</div>';
+  });
+  w.innerHTML=html;
+}
+
+function row(f){
+  return'<div class="item"><div class="item-main"><div class="item-name">'+esc(f.name)
+    +'<span class="pill" style="font-size:11px;padding:4px 10px">'+f.group+'</span></div>'
+    +(f.tag?'<div class="item-sub">'+esc(f.tag)+'</div>':'')+'</div>'
+    +'<button class="item-del" onclick="unblock(\''+f.id+'\')">×</button></div>';
+}
+function renderFav(){
+  const fav=db.foods.filter(f=>f.fav),blk=db.foods.filter(f=>f.blk);
+  $('fav-list').innerHTML=fav.length?fav.map(row).join(''):'<div class="empty" style="padding:26px 10px"><div class="ico"></div><p>还没有收藏的店<br>抽中喜欢的就点一下收藏</p></div>';
+  $('blk-list').innerHTML=blk.length?blk.map(row).join(''):'<div class="empty" style="padding:26px 10px"><div class="ico"></div><p>避雷清单是空的<br>说明你最近口味还不错嘛</p></div>';
+}
+function unblock(id){
+  const f=db.foods.find(x=>x.id===id);if(!f)return;
+  if(f.blk){f.blk=false;toast('已从避雷清单移除：'+f.name)}
+  else{f.fav=false;toast('已取消收藏：'+f.name)}
+  save();renderFav();renderList();renderHome();
+}
+
+function renderStat(){
+  const now=new Date(),y=now.getFullYear(),mo=now.getMonth();
+  const m=db.logs.filter(l=>{const d=new Date(l.t);return d.getFullYear()===y&&d.getMonth()===mo});
+  $('st-total').textContent=db.logs.length;
+  $('st-month').textContent=m.length;
+  const uniq=[...new Set(m.map(l=>l.name))];
+  $('month-list').innerHTML=uniq.length?uniq.map(n=>{
+    const c=m.filter(l=>l.name===n).length;
+    return'<div class="log"><span class="dt">'+esc(n.slice(0,2))+'…</span><span class="nm">'+esc(n)+'</span><span class="pill" style="font-size:11px;padding:4px 10px">'+c+' 次</span></div>';
+  }).join(''):'<div class="empty" style="padding:26px 10px"><div class="ico"></div><p>本月还没有打卡记录<br>抽完记得回来打个小卡</p></div>';
+  $('all-list').innerHTML=db.logs.length?db.logs.slice(0,40).map(l=>{
+    const d=new Date(l.t);
+    return'<div class="log"><span class="dt">'+(d.getMonth()+1)+'/'+d.getDate()+''+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+'</span><span class="nm">'+esc(l.name)+'</span></div>';
+  }).join(''):'<div class="empty" style="padding:26px 10px"><p>还没有任何记录</p></div>';
+}
+function clearLogs(){
+  if(!db.logs.length){toast('本来就是空的');return}
+  db.logs=[];save();renderStat();toast(' 打卡记录已清空');
+}
+
+function renderHome(){
+  const n=db.foods.length,ok=db.foods.filter(f=>!f.blk).length,ny=n?db.foods.filter(f=>f.region==='南阳').length:0;
+  $('home-count').innerHTML=n
+    ? ('库里有 <b>'+n+'</b> 家餐厅 · 本轮可抽'+ok+' 家'+(ny?'<br>其中南阳本地 '+ny+' 家':''))
+    :'饭店库还是空的<br>一键导入南阳本地 '+NANYANG_PRESET.length+' 家口碑店家';
+  $('home-sub').textContent=n?('已经攒了'+n+' 家，随时可以开抽'):'今天吃什么，交给一次随机的惊喜';
+  const pend=nyPending();
+  const nyTel=NANYANG_PRESET.filter(p=>p.p).length;
+  if($('ny-total'))$('ny-total').textContent=NANYANG_PRESET.length;
+  if($('ny-tel-total'))$('ny-tel-total').textContent=nyTel;
+  if($('ny-sub'))$('ny-sub').textContent=pend.length
+    ? ('烩面 · 牛肉汤 · 板面 · 烧鸡 · 火锅 · 小吃街，共 '+nyTel+' 通电话，还有 '+pend.length+' 家没进库')
+    : ('已全部导入 '+NANYANG_PRESET.length+' 家本地口碑店 · 可拨电话 '+telCount()+' 家');
+  if($('ny-tag'))$('ny-tag').textContent=pend.length?('待导入 '+pend.length+' 家'):'已导入';
+  const t=new Date();const today=t.getFullYear()+'-'+(t.getMonth()+1)+'-'+t.getDate();
+  const td=db.logs.find(l=>{const d=new Date(l.t);return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()===today});
+  $('today-log').innerHTML=td?('今天在 <b>'+esc(td.name)+'</b> · 已打卡'):'还没记录今天吃了什么';
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Enter')return;
+  const box=$('f-name');
+  if(document.activeElement===box&&box.value.trim()){
+    const raw=box.value.trim(),p=raw.split(/[|｜]/);
+    if(p.length>1)$('f-tag').value=p.slice(1).join('｜').trim();
+    box.value=p[0].trim();
+  }
+});
+
+renderChips();renderHome();renderList();
+</script>
+</body>
+</html>
